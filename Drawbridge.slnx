@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Drawbridge.Api/Drawbridge.Api.csproj" />
+    <Project Path="src/Drawbridge.ConversionWorker/Drawbridge.ConversionWorker.csproj" />
+    <Project Path="src/Drawbridge.PdmAddIn/Drawbridge.PdmAddIn.csproj" />
+    <Project Path="src/Drawbridge.Shared/Drawbridge.Shared.csproj" />
+  </Folder>
+</Solution>

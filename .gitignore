@@ -1,0 +1,46 @@
+# ── .NET ──────────────────────────────────────────────────────────────────────
+src/**/bin/
+src/**/obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+*.nupkg
+*.snupkg
+project.lock.json
+project.fragment.lock.json
+artifacts/
+TestResults/
+
+# ── Node / Angular ────────────────────────────────────────────────────────────
+node_modules/
+dist/
+.angular/
+.cache/
+npm-debug.log*
+
+# ── CDK ───────────────────────────────────────────────────────────────────────
+infra/cdk/cdk.out/
+infra/cdk/dist/
+infra/cdk/node_modules/
+
+# ── Terraform ─────────────────────────────────────────────────────────────────
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfstate.lock.info
+.terraform.lock.hcl
+terraform.tfvars
+*.tfvars
+
+# ── Secrets / environment ─────────────────────────────────────────────────────
+.env
+.env.*
+appsettings.Development.json
+launchSettings.json
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
