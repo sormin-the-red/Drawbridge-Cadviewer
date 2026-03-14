@@ -5,9 +5,13 @@ import { DrawbridgeStack } from '../lib/drawbridge-stack';
 
 const app = new cdk.App();
 
-new DrawbridgeStack(app, 'DrawbridgeStack', {
+const stack = new DrawbridgeStack(app, 'DrawbridgeStack', {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: process.env.CDK_DEFAULT_REGION,
+    region: 'us-east-2',
   },
 });
+
+cdk.Tags.of(stack).add('Project', 'Drawbridge');
+cdk.Tags.of(stack).add('ManagedBy', 'CDK');
+cdk.Tags.of(stack).add('Environment', 'prod');
