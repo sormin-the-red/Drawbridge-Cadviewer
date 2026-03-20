@@ -4,6 +4,24 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <AWSProjectType>Lambda</AWSProjectType>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <PublishSelfContained>true</PublishSelfContained>
+    <PublishReadyToRun>true</PublishReadyToRun>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Amazon.Lambda.AspNetCoreServer.Hosting" Version="1.9.0" />
+    <PackageReference Include="AWSSDK.CognitoIdentityProvider" Version="4.0.8.1" />
+    <PackageReference Include="AWSSDK.DynamoDBv2" Version="4.0.17.8" />
+    <PackageReference Include="AWSSDK.S3" Version="4.0.21.1" />
+    <PackageReference Include="AWSSDK.SQS" Version="4.0.2.25" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.5" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Drawbridge.Shared\Drawbridge.Shared.csproj" />
+  </ItemGroup>
 
 </Project>
