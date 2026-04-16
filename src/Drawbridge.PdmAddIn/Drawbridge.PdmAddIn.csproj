@@ -4,8 +4,23 @@
     <TargetFramework>net48</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <UseWindowsForms>false</UseWindowsForms>
+    <UseWindowsForms>true</UseWindowsForms>
     <OutputType>Library</OutputType>
+    <LangVersion>latest</LangVersion>
+    <!-- Visiativ interop package ships net5.0/net6.0 only; net48 must fall back to net5.0 assets -->
+    <AssetTargetFallback>$(AssetTargetFallback);net5.0</AssetTargetFallback>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Visiativ.SOLIDWORKS.PDMProfessional.Interop" Version="32.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Net.Http" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Drawbridge.Shared\Drawbridge.Shared.csproj" />
+  </ItemGroup>
 
 </Project>
