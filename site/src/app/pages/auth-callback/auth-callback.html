@@ -1,0 +1,8 @@
+@if (error) {
+  <div class="callback-error">
+    <p>Sign-in failed: {{ error }}</p>
+    <a routerLink="/landing">Try again</a>
+  </div>
+} @else {
+  <div class="callback-loading">Signing in&hellip;</div>
+}
