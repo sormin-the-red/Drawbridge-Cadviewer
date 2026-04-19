@@ -1,0 +1,47 @@
+<div class="library">
+  <div class="toolbar">
+    <h1 class="page-title">Product Library</h1>
+    <input
+      class="search"
+      type="search"
+      placeholder="Search by part number, name…"
+      [value]="search()"
+      (input)="onSearch($event)"
+    />
+  </div>
+
+  @if (loading()) {
+    <div class="state-msg">Loading…</div>
+  } @else if (error()) {
+    <div class="state-msg error">{{ error() }}</div>
+  } @else if (filtered().length === 0) {
+    <div class="state-msg">No products found.</div>
+  } @else {
+    <div class="grid">
+      @for (p of filtered(); track p.partNumber) {
+        <a class="card" [routerLink]="['/products', p.partNumber]">
+          <div class="thumb-wrap">
+            @if (p.thumbnailUrl) {
+              <img class="thumb" [src]="p.thumbnailUrl" [alt]="p.name" loading="lazy" />
+            } @else {
+              <div class="thumb-placeholder">No preview</div>
+            }
+          </div>
+          <div class="card-body">
+            <div class="part-number">{{ p.partNumber }}</div>
+            <div class="name">{{ p.name }}</div>
+            @if (p.description) {
+              <div class="description">{{ p.description }}</div>
+            }
+            <div class="meta">
+              <span class="version">v{{ p.latestVersion }}</span>
+              <span class="status-badge" [class]="statusClass(p.latestStatus)">
+                {{ p.latestStatus }}
+              </span>
+            </div>
+          </div>
+        </a>
+      }
+    </div>
+  }
+</div>

@@ -1,0 +1,161 @@
+.library {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  gap: 16px;
+}
+
+.page-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.search {
+  width: 280px;
+  padding: 7px 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-text);
+  font-size: 13px;
+}
+
+.search:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.state-msg {
+  text-align: center;
+  padding: 48px 0;
+  color: var(--color-text-muted);
+}
+
+.state-msg.error {
+  color: var(--color-danger);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  overflow: hidden;
+  text-decoration: none;
+  color: var(--color-text);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.card:hover {
+  border-color: var(--color-accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.thumb-wrap {
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: #111;
+}
+
+.thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.thumb-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.card-body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.part-number {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.name {
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.description {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.version {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.status-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+.status-complete {
+  background: rgba(76, 175, 80, 0.15);
+  color: #4caf50;
+}
+
+.status-failed {
+  background: rgba(224, 80, 80, 0.15);
+  color: var(--color-danger);
+}
+
+.status-queued,
+.status-running {
+  background: rgba(74, 158, 255, 0.15);
+  color: var(--color-accent);
+}
+
+.status-other {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-text-muted);
+}
