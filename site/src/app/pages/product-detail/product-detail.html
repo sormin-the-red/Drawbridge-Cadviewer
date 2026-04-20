@@ -1,0 +1,60 @@
+@if (loading()) {
+  <div class="state-msg">Loading…</div>
+} @else if (error()) {
+  <div class="state-msg error">{{ error() }}</div>
+} @else if (product(); as p) {
+  <div class="detail">
+    <div class="breadcrumb">
+      <a routerLink="/">Library</a>
+      <span class="sep">/</span>
+      <span>{{ p.partNumber }}</span>
+    </div>
+
+    <div class="header">
+      <div>
+        <h1 class="name">{{ p.name }}</h1>
+        <div class="part-number">{{ p.partNumber }}</div>
+        @if (p.description) {
+          <p class="description">{{ p.description }}</p>
+        }
+      </div>
+    </div>
+
+    <h2 class="section-title">Versions</h2>
+
+    <div class="version-list">
+      @for (v of p.versions; track v.version) {
+        <div class="version-row">
+          <div class="version-info">
+            <span class="version-num">v{{ v.version }}</span>
+            <span class="status-badge" [class]="statusClass(v.status)">{{ v.status }}</span>
+            <span class="submitted-by">{{ v.submittedBy }}</span>
+            <span class="submitted-at">{{ formatDate(v.submittedAt) }}</span>
+            @if (v.ownerName) {
+              <span class="owner">Owner: {{ v.ownerName }}</span>
+            }
+          </div>
+          @if (v.description) {
+            <div class="version-desc">{{ v.description }}</div>
+          }
+          @if (v.status.toLowerCase() === 'failed' && v.errorMessage) {
+            <div class="error-msg">{{ v.errorMessage }}</div>
+          }
+          <div class="version-actions">
+            @if (canView(v)) {
+              <a
+                class="btn-view"
+                [routerLink]="['/viewer', partNumber, v.version]"
+              >View 3D</a>
+            }
+            @if (v.thumbnailUrl) {
+              <a class="btn-thumb" [href]="v.thumbnailUrl" target="_blank" rel="noopener">
+                Thumbnail
+              </a>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+}
