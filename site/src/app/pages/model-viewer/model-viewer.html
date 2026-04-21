@@ -1,0 +1,30 @@
+<div class="viewer-page">
+  <div class="top-bar">
+    <a class="back-link" [routerLink]="['/products', partNumber]">
+      ← {{ partNumber }}
+    </a>
+
+    @if (configs().length > 1) {
+      <div class="config-selector">
+        <label class="config-label">Config:</label>
+        <select class="config-select" [value]="selectedConfig()" (change)="onConfigChange($event)">
+          @for (cfg of configs(); track cfg) {
+            <option [value]="cfg">{{ cfg }}</option>
+          }
+        </select>
+      </div>
+    }
+
+    @if (versionDetail(); as v) {
+      <span class="version-badge">v{{ v.version }}</span>
+    }
+  </div>
+
+  @if (loading()) {
+    <div class="viewer-state">Loading model…</div>
+  } @else if (error()) {
+    <div class="viewer-state error">{{ error() }}</div>
+  }
+
+  <div #viewerContainer class="viewer-root"></div>
+</div>
