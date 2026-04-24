@@ -1,0 +1,29 @@
+<div class="editor-wrap">
+  <div class="editor-toolbar">
+    @for (t of tools; track t.id) {
+      <button
+        class="tool-btn"
+        [class.active]="activeTool() === t.id"
+        (click)="setTool(t.id)"
+        [title]="t.id"
+      >{{ t.label }}</button>
+    }
+    <input class="color-pick" type="color" [value]="color()" (input)="color.set($any($event.target).value)" />
+    <input class="width-range" type="range" min="1" max="12" [value]="lineWidth()" (input)="lineWidth.set(+$any($event.target).value)" />
+    <div class="spacer"></div>
+    <button class="btn-save" (click)="save()">Save markup</button>
+    <button class="btn-cancel" (click)="cancel.emit()">Cancel</button>
+  </div>
+  <div class="canvas-area">
+    @if (screenshotDataUrl) {
+      <img class="screenshot-bg" [src]="screenshotDataUrl" alt="" />
+    }
+    <canvas
+      #canvas
+      class="draw-canvas"
+      (mousedown)="onMouseDown($event)"
+      (mousemove)="onMouseMove($event)"
+      (mouseup)="onMouseUp()"
+    ></canvas>
+  </div>
+</div>

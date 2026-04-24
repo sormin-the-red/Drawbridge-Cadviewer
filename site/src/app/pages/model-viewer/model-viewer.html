@@ -1,107 +1,134 @@
-<div class="viewer-page">
-  <div class="top-bar">
-    <a class="back-link" [routerLink]="['/products', partNumber]">
-      ← {{ partNumber }}
-    </a>
+@if (markupEditorOpen()) {
+  <app-markup-editor
+    [screenshotDataUrl]="screenshotUrl()"
+    (saved)="onMarkupSaved($event)"
+    (cancel)="markupEditorOpen.set(false)"
+  />
+} @else {
+  <div class="viewer-page">
+    <div class="top-bar">
+      <a class="back-link" [routerLink]="['/products', partNumber]">← {{ partNumber }}</a>
 
-    @if (configs().length > 1) {
-      <div class="config-selector">
-        <label class="config-label">Config:</label>
-        <select class="config-select" [value]="selectedConfig()" (change)="onConfigChange($event)">
-          @for (cfg of configs(); track cfg) {
-            <option [value]="cfg">{{ cfg }}</option>
+      @if (configs().length > 1) {
+        <div class="config-selector">
+          <label class="config-label">Config:</label>
+          <select class="config-select" [value]="selectedConfig()" (change)="onConfigChange($event)">
+            @for (cfg of configs(); track cfg) {
+              <option [value]="cfg">{{ cfg }}</option>
+            }
+          </select>
+        </div>
+      }
+
+      <button
+        class="btn-comment"
+        [class.active]="commentMode()"
+        (click)="toggleCommentMode()"
+      >Comment</button>
+
+      <button class="btn-markup" (click)="openMarkupEditor()">New markup</button>
+
+      @if (versionDetail(); as v) {
+        <span class="version-badge">v{{ v.version }}</span>
+      }
+    </div>
+
+    @if (loading()) {
+      <div class="viewer-state">Loading model…</div>
+    } @else if (error()) {
+      <div class="viewer-state error">{{ error() }}</div>
+    }
+
+    <div class="viewer-body">
+      <div
+        class="viewer-wrapper"
+        [class.comment-cursor]="commentMode()"
+        (click)="onViewerClick($event)"
+      >
+        <div #viewerContainer class="viewer-root"></div>
+
+        @for (ann of visibleAnnotations(); track ann.annotationId) {
+          @if (getPinPosition(ann.annotationId); as pos) {
+            <button
+              class="pin"
+              [style.left.px]="pos.x"
+              [style.top.px]="pos.y"
+              (click)="$event.stopPropagation(); openPopup(ann.annotationId)"
+              [title]="ann.authorName + ': ' + ann.text"
+            >&#x1F4AC;</button>
+
+            @if (activePopup() === ann.annotationId) {
+              <div
+                class="popup"
+                [style.left.px]="pos.x + 16"
+                [style.top.px]="pos.y - 8"
+                (click)="$event.stopPropagation()"
+              >
+                <div class="popup-header">
+                  <span class="popup-author">{{ ann.authorName }}</span>
+                  <button class="popup-close" (click)="closePopup()">✕</button>
+                </div>
+                <p class="popup-text">{{ ann.text }}</p>
+                @if (ann.authorEmail === currentUserEmail()) {
+                  <button class="popup-delete" (click)="deleteAnnotation(ann.annotationId)">Delete</button>
+                }
+              </div>
+            }
           }
-        </select>
-      </div>
-    }
+        }
 
-    <button
-      class="btn-comment"
-      [class.active]="commentMode()"
-      (click)="toggleCommentMode()"
-      title="Add comment pin"
-    >Comment</button>
-
-    @if (versionDetail(); as v) {
-      <span class="version-badge">v{{ v.version }}</span>
-    }
-  </div>
-
-  @if (loading()) {
-    <div class="viewer-state">Loading model…</div>
-  } @else if (error()) {
-    <div class="viewer-state error">{{ error() }}</div>
-  }
-
-  <div
-    class="viewer-wrapper"
-    [class.comment-cursor]="commentMode()"
-    (click)="onViewerClick($event)"
-  >
-    <div #viewerContainer class="viewer-root"></div>
-
-    <!-- annotation pins -->
-    @for (ann of visibleAnnotations(); track ann.annotationId) {
-      @if (getPinPosition(ann.annotationId); as pos) {
-        <button
-          class="pin"
-          [style.left.px]="pos.x"
-          [style.top.px]="pos.y"
-          (click)="$event.stopPropagation(); openPopup(ann.annotationId)"
-          title="{{ ann.authorName }}: {{ ann.text }}"
-        >&#x1F4AC;</button>
-
-        @if (activePopup() === ann.annotationId) {
-          <div
-            class="popup"
-            [style.left.px]="pos.x + 16"
-            [style.top.px]="pos.y - 8"
-            (click)="$event.stopPropagation()"
-          >
+        @if (activePopup() === '__new__') {
+          <div class="popup popup-new" (click)="$event.stopPropagation()">
             <div class="popup-header">
-              <span class="popup-author">{{ ann.authorName }}</span>
+              <span class="popup-author">New comment</span>
               <button class="popup-close" (click)="closePopup()">✕</button>
             </div>
-            <p class="popup-text">{{ ann.text }}</p>
-            @if (ann.authorEmail === currentUserEmail()) {
-              <button class="popup-delete" (click)="deleteAnnotation(ann.annotationId)">Delete</button>
-            }
+            <div class="mention-wrap">
+              <textarea
+                #draftArea
+                class="draft-area"
+                rows="3"
+                placeholder="Add a comment… use @email to mention"
+                [value]="draftText()"
+                (input)="onDraftInput($event)"
+              ></textarea>
+              @if (mentionDropdown() && mentionMatches().length > 0) {
+                <ul class="mention-list">
+                  @for (u of mentionMatches(); track u.email) {
+                    <li class="mention-item" (mousedown)="insertMention(u, draftArea)">
+                      <span class="mention-name">{{ u.name }}</span>
+                      <span class="mention-email">{{ u.email }}</span>
+                    </li>
+                  }
+                </ul>
+              }
+            </div>
+            <button
+              class="popup-submit"
+              (click)="submitAnnotation()"
+              [disabled]="!draftText().trim()"
+            >Post</button>
           </div>
         }
-      }
-    }
-
-    <!-- new annotation compose popup -->
-    @if (activePopup() === '__new__') {
-      <div class="popup popup-new" (click)="$event.stopPropagation()">
-        <div class="popup-header">
-          <span class="popup-author">New comment</span>
-          <button class="popup-close" (click)="closePopup()">✕</button>
-        </div>
-        <div class="mention-wrap">
-          <textarea
-            #draftArea
-            class="draft-area"
-            rows="3"
-            placeholder="Add a comment… use @email to mention"
-            [value]="draftText()"
-            (input)="onDraftInput($event)"
-          ></textarea>
-          @if (mentionDropdown() && mentionMatches().length > 0) {
-            <ul class="mention-list">
-              @for (u of mentionMatches(); track u.email) {
-                <li class="mention-item" (mousedown)="insertMention(u, draftArea)">
-                  <span class="mention-name">{{ u.name }}</span>
-                  <span class="mention-email">{{ u.email }}</span>
-                </li>
-              }
-            </ul>
-          }
-        </div>
-        <button class="popup-submit" (click)="submitAnnotation()" [disabled]="!draftText().trim()">
-          Post
-        </button>
       </div>
-    }
+
+      @if (showMarkupPanel()) {
+        <app-markup-panel
+          [markups]="markups()"
+          (view)="openMarkupModal($event)"
+          (delete)="deleteMarkup($event)"
+          (reorder)="onReorder($event)"
+        />
+      }
+    </div>
   </div>
-</div>
+}
+
+@if (markupModalOpen()) {
+  <app-markup-modal
+    [markups]="markups()"
+    [initialIndex]="markupModalIndex()"
+    (close)="markupModalOpen.set(false)"
+    (restoreView)="onRestoreView($event)"
+  />
+}

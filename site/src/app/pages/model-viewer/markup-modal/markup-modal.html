@@ -1,0 +1,30 @@
+<div class="modal-overlay" (click)="close.emit()">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-title">{{ current()?.label }}</span>
+      <div class="modal-nav">
+        <button class="nav-btn" (click)="prev()" [disabled]="index() === 0">‹</button>
+        <span class="nav-count">{{ index() + 1 }} / {{ markups.length }}</span>
+        <button class="nav-btn" (click)="next()" [disabled]="index() === markups.length - 1">›</button>
+      </div>
+      <button class="close-btn" (click)="close.emit()">✕</button>
+    </div>
+
+    <div class="modal-body">
+      @if (loading()) {
+        <div class="modal-loading">Loading…</div>
+      } @else if (current(); as m) {
+        <img class="markup-img" [src]="m.previewUrl" [alt]="m.label" />
+      }
+    </div>
+
+    <div class="modal-footer">
+      @if (data()) {
+        <button class="btn-restore" (click)="restore()">Restore view</button>
+      }
+      <span class="modal-meta">
+        {{ current()?.config }} · {{ current()?.createdBy }}
+      </span>
+    </div>
+  </div>
+</div>

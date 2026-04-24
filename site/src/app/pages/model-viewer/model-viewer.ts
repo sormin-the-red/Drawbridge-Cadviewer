@@ -3,7 +3,6 @@ import {
   ChangeDetectorRef,
   Component,
   ElementRef,
-  HostListener,
   NgZone,
   OnDestroy,
   OnInit,
@@ -16,18 +15,24 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
 import { AuthService } from '../../services/auth.service';
-import type { Annotation, OrgUser, VersionDetail, ViewerToken } from '../../models/api.models';
+import { MarkupEditorComponent } from './markup-editor/markup-editor';
+import { MarkupPanelComponent } from './markup-panel/markup-panel';
+import { MarkupModalComponent } from './markup-modal/markup-modal';
+import type {
+  Annotation,
+  MarkupRecord,
+  OrgUser,
+  VersionDetail,
+  ViewerToken,
+} from '../../models/api.models';
 
 declare const Autodesk: any;
 
-interface PinPosition {
-  x: number;
-  y: number;
-}
+interface PinPosition { x: number; y: number }
 
 @Component({
   selector: 'app-model-viewer',
-  imports: [RouterLink, FormsModule],
+  imports: [RouterLink, FormsModule, MarkupEditorComponent, MarkupPanelComponent, MarkupModalComponent],
   templateUrl: './model-viewer.html',
   styleUrl: './model-viewer.scss',
 })
@@ -58,15 +63,15 @@ export class ModelViewerComponent implements OnInit, AfterViewInit, OnDestroy {
   });
 
   // Annotations
-  protected annotations    = signal<Annotation[]>([]);
-  protected pinPositions   = signal<Map<string, PinPosition>>(new Map());
-  protected commentMode    = signal(false);
-  protected activePopup    = signal<string | null>(null);   // annotationId
-  protected draftText      = signal('');
-  protected orgUsers       = signal<OrgUser[]>([]);
-  protected mentionQuery   = signal('');
+  protected annotations     = signal<Annotation[]>([]);
+  protected pinPositions    = signal<Map<string, PinPosition>>(new Map());
+  protected commentMode     = signal(false);
+  protected activePopup     = signal<string | null>(null);
+  protected draftText       = signal('');
+  protected orgUsers        = signal<OrgUser[]>([]);
+  protected mentionQuery    = signal('');
   protected mentionDropdown = signal(false);
-  protected mentionStart   = 0;
+  protected mentionStart    = 0;
 
   protected mentionMatches = computed(() => {
     const q = this.mentionQuery().toLowerCase();
@@ -75,6 +80,14 @@ export class ModelViewerComponent implements OnInit, AfterViewInit, OnDestroy {
       .filter(u => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
       .slice(0, 6);
   });
+
+  // Markups
+  protected markups          = signal<MarkupRecord[]>([]);
+  protected markupEditorOpen = signal(false);
+  protected markupModalOpen  = signal(false);
+  protected markupModalIndex = signal(0);
+  protected screenshotUrl    = signal('');
+  protected showMarkupPanel  = signal(true);
 
   private viewer: any        = null;
   private viewerToken: ViewerToken | null = null;
@@ -96,10 +109,8 @@ export class ModelViewerComponent implements OnInit, AfterViewInit, OnDestroy {
       this.orgUsers.set(users);
       const v = product.versions.find(x => x.version === this.version) ?? null;
       this.versionDetail.set(v);
-      if (v && this.configs().length > 0) {
-        this.selectedConfig.set(this.configs()[0]);
-      }
-      await this.loadAnnotations();
+      if (v && this.configs().length > 0) this.selectedConfig.set(this.configs()[0]);
+      await Promise.all([this.loadAnnotations(), this.loadMarkups()]);
     } catch (e) {
       this.error.set(e instanceof Error ? e.message : 'Failed to load model');
       this.loading.set(false);
@@ -107,18 +118,15 @@ export class ModelViewerComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngAfterViewInit(): void {
-    if (this.versionDetail() && this.viewerToken && !this.error()) {
-      this.initViewer();
-    }
+    if (this.versionDetail() && this.viewerToken && !this.error()) this.initViewer();
   }
 
   ngOnDestroy(): void {
     cancelAnimationFrame(this.frameReq);
-    if (this.viewer) {
-      this.viewer.finish();
-      this.viewer = null;
-    }
+    if (this.viewer) { this.viewer.finish(); this.viewer = null; }
   }
+
+  // ── Config ────────────────────────────────────────────────────────────────
 
   protected onConfigChange(e: Event): void {
     const config = (e.target as HTMLSelectElement).value;
@@ -128,9 +136,12 @@ export class ModelViewerComponent implements OnInit, AfterViewInit, OnDestroy {
     this.updatePinPositions();
   }
 
+  // ── Annotations ───────────────────────────────────────────────────────────
+
   protected toggleCommentMode(): void {
     this.commentMode.update(v => !v);
     this.activePopup.set(null);
+    this.markupEditorOpen.set(false);
   }
 
   protected openPopup(id: string): void {
@@ -141,7 +152,6 @@ export class ModelViewerComponent implements OnInit, AfterViewInit, OnDestroy {
 
   protected closePopup(): void {
     this.activePopup.set(null);
-    this.draftText.set(null as any);
     this.draftText.set('');
     this.mentionDropdown.set(false);
   }
@@ -162,9 +172,7 @@ export class ModelViewerComponent implements OnInit, AfterViewInit, OnDestroy {
   protected onViewerClick(e: MouseEvent): void {
     if (!this.commentMode() || !this.viewer) return;
     const rect = this.viewerContainer.nativeElement.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const hit = this.viewer.clientToWorld({ x, y });
+    const hit  = this.viewer.clientToWorld({ x: e.clientX - rect.left, y: e.clientY - rect.top });
     if (!hit?.point) return;
     this.pendingWorld = [hit.point.x, hit.point.y, hit.point.z];
     this.activePopup.set('__new__');
@@ -172,10 +180,9 @@ export class ModelViewerComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   protected onDraftInput(e: Event): void {
-    const input = e.target as HTMLTextAreaElement;
-    const val   = input.value;
+    const input  = e.target as HTMLTextAreaElement;
+    const val    = input.value;
     this.draftText.set(val);
-
     const cursor = input.selectionStart ?? val.length;
     const atIdx  = val.lastIndexOf('@', cursor - 1);
     if (atIdx >= 0 && cursor - atIdx <= 20) {
@@ -188,11 +195,9 @@ export class ModelViewerComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   protected insertMention(user: OrgUser, textarea: HTMLTextAreaElement): void {
-    const val    = this.draftText();
-    const before = val.slice(0, this.mentionStart);
-    const after  = val.slice(textarea.selectionStart ?? val.length);
-    const next   = `${before}@${user.email} ${after}`;
-    this.draftText.set(next);
+    const val  = this.draftText();
+    const after = val.slice(textarea.selectionStart ?? val.length);
+    this.draftText.set(`${val.slice(0, this.mentionStart)}@${user.email} ${after}`);
     this.mentionDropdown.set(false);
     setTimeout(() => textarea.focus());
   }
@@ -200,19 +205,14 @@ export class ModelViewerComponent implements OnInit, AfterViewInit, OnDestroy {
   protected async submitAnnotation(): Promise<void> {
     const text = this.draftText().trim();
     if (!text || !this.pendingWorld) return;
-
     const mentionRegex = /@([\w.+-]+@[\w.-]+)/g;
     const mentions: string[] = [];
     let m: RegExpExecArray | null;
     while ((m = mentionRegex.exec(text)) !== null) mentions.push(m[1]);
-
     try {
       const created = await this.api.createAnnotation(this.partNumber, this.version, {
-        config:         this.selectedConfig(),
-        worldX:         this.pendingWorld[0],
-        worldY:         this.pendingWorld[1],
-        worldZ:         this.pendingWorld[2],
-        text,
+        config: this.selectedConfig(), worldX: this.pendingWorld[0],
+        worldY: this.pendingWorld[1], worldZ: this.pendingWorld[2], text,
         mentionedEmails: mentions,
       });
       this.annotations.update(list => [...list, created]);
@@ -220,10 +220,7 @@ export class ModelViewerComponent implements OnInit, AfterViewInit, OnDestroy {
       this.activePopup.set(null);
       this.commentMode.set(false);
       this.draftText.set('');
-      this.updatePinPositions();
-    } catch (e) {
-      console.error('Failed to save annotation', e);
-    }
+    } catch (e) { console.error('Failed to save annotation', e); }
   }
 
   protected async deleteAnnotation(id: string): Promise<void> {
@@ -231,29 +228,88 @@ export class ModelViewerComponent implements OnInit, AfterViewInit, OnDestroy {
       await this.api.deleteAnnotation(this.partNumber, this.version, id);
       this.annotations.update(list => list.filter(a => a.annotationId !== id));
       if (this.activePopup() === id) this.activePopup.set(null);
-      this.updatePinPositions();
-    } catch (e) {
-      console.error('Failed to delete annotation', e);
-    }
+    } catch (e) { console.error('Failed to delete annotation', e); }
   }
 
-  protected currentUserEmail(): string {
-    return this.auth.getCurrentUser()?.email ?? '';
+  protected currentUserEmail(): string { return this.auth.getCurrentUser()?.email ?? ''; }
+
+  // ── Markups ───────────────────────────────────────────────────────────────
+
+  protected openMarkupEditor(): void {
+    if (!this.viewer) return;
+    this.viewer.getScreenShot(
+      this.viewerContainer.nativeElement.clientWidth,
+      this.viewerContainer.nativeElement.clientHeight,
+      (url: string) => {
+        this.screenshotUrl.set(url);
+        this.markupEditorOpen.set(true);
+        this.commentMode.set(false);
+      },
+    );
+  }
+
+  protected async onMarkupSaved(ev: { previewBase64: string; canvasBase64: string }): Promise<void> {
+    const label = prompt('Markup label:') ?? 'Markup';
+    this.markupEditorOpen.set(false);
+    const viewerState = this.viewer?.getState?.() ?? null;
+    try {
+      const created = await this.api.createMarkup(this.partNumber, this.version, {
+        config:        this.selectedConfig(),
+        label,
+        sortOrder:     this.markups().length,
+        previewBase64: ev.previewBase64,
+        canvasBase64:  ev.canvasBase64,
+        viewerState,
+      });
+      this.markups.update(list => [...list, created]);
+    } catch (e) { console.error('Failed to save markup', e); }
+  }
+
+  protected async deleteMarkup(markupId: string): Promise<void> {
+    try {
+      await this.api.deleteMarkup(this.partNumber, this.version, markupId);
+      this.markups.update(list => list.filter(m => m.markupId !== markupId));
+    } catch (e) { console.error('Failed to delete markup', e); }
+  }
+
+  protected openMarkupModal(markup: MarkupRecord): void {
+    const idx = this.markups().findIndex(m => m.markupId === markup.markupId);
+    this.markupModalIndex.set(Math.max(0, idx));
+    this.markupModalOpen.set(true);
+  }
+
+  protected onRestoreView(state: unknown): void {
+    this.markupModalOpen.set(false);
+    if (this.viewer && state) this.viewer.restoreState(state);
+  }
+
+  protected async onReorder(ev: { markupId: string; sortOrder: number }): Promise<void> {
+    try {
+      await this.api.updateMarkupOrder(this.partNumber, this.version, ev.markupId, ev.sortOrder);
+      this.markups.update(list =>
+        list.map(m => m.markupId === ev.markupId ? { ...m, sortOrder: ev.sortOrder } : m)
+            .sort((a, b) => a.sortOrder - b.sortOrder),
+      );
+    } catch { /* non-fatal */ }
   }
 
   // ── Private ───────────────────────────────────────────────────────────────
 
   private async loadAnnotations(): Promise<void> {
+    try { this.annotations.set(await this.api.getAnnotations(this.partNumber, this.version)); }
+    catch { /* non-fatal */ }
+  }
+
+  private async loadMarkups(): Promise<void> {
     try {
-      const list = await this.api.getAnnotations(this.partNumber, this.version);
-      this.annotations.set(list);
+      const list = await this.api.getMarkups(this.partNumber, this.version);
+      this.markups.set(list.sort((a, b) => a.sortOrder - b.sortOrder));
     } catch { /* non-fatal */ }
   }
 
   private initViewer(): void {
     const options = {
-      env: 'AutodeskProduction2',
-      api: 'streamingV2',
+      env: 'AutodeskProduction2', api: 'streamingV2',
       accessToken: this.viewerToken!.access_token,
     };
     Autodesk.Viewing.Initializer(options, () => {
@@ -271,70 +327,51 @@ export class ModelViewerComponent implements OnInit, AfterViewInit, OnDestroy {
   private loadUrn(config: string): void {
     const v = this.versionDetail();
     if (!v || !this.viewer) return;
-
     let urn = v.apsUrn ?? '';
     if (v.configUrns?.[config]) urn = v.configUrns[config];
     if (!urn) return;
-
-    Autodesk.Viewing.Document.load(
-      `urn:${urn}`,
+    Autodesk.Viewing.Document.load(`urn:${urn}`,
       (doc: any) => {
         const viewable = doc.getRoot().getDefaultGeometry();
         if (!viewable) return;
-        this.viewer.loadDocumentNode(doc, viewable).then(() => {
-          this.applySuppressedComponents(config);
-        });
+        this.viewer.loadDocumentNode(doc, viewable)
+          .then(() => this.applySuppressedComponents(config));
       },
-      (code: number, msg: string) => {
-        this.error.set(`Failed to load model: ${msg} (${code})`);
-      },
+      (code: number, msg: string) => this.error.set(`Failed to load model: ${msg} (${code})`),
     );
   }
 
   private applySuppressedComponents(config: string): void {
     const v = this.versionDetail();
     if (!v?.configSuppressedComponents || !this.viewer) return;
-
-    const allConfigs  = this.configs();
-    const suppressed  = v.configSuppressedComponents[config] ?? [];
-    const suppSet     = new Set(suppressed);
+    const suppressed  = new Set(v.configSuppressedComponents[config] ?? []);
     const allSuppressed = new Set<string>();
-    for (const cfg of allConfigs) {
+    for (const cfg of this.configs())
       for (const p of v.configSuppressedComponents[cfg] ?? []) allSuppressed.add(p);
-    }
-
     this.viewer.model?.getObjectTree((tree: any) => {
-      const toHide: number[] = [];
-      const toShow: number[] = [];
+      const hide: number[] = [], show: number[] = [];
       tree.enumNodeChildren(tree.getRootId(), (dbId: number) => {
         const name = tree.getNodeName(dbId) ?? '';
-        if (suppSet.has(name))          toHide.push(dbId);
-        else if (allSuppressed.has(name)) toShow.push(dbId);
+        if (suppressed.has(name))         hide.push(dbId);
+        else if (allSuppressed.has(name)) show.push(dbId);
       }, true);
-      if (toHide.length) this.viewer.hide(toHide);
-      if (toShow.length) this.viewer.show(toShow);
+      if (hide.length) this.viewer.hide(hide);
+      if (show.length) this.viewer.show(show);
     });
   }
 
   private startPinLoop(): void {
-    const loop = () => {
-      this.updatePinPositions();
-      this.frameReq = requestAnimationFrame(loop);
-    };
+    const loop = () => { this.updatePinPositions(); this.frameReq = requestAnimationFrame(loop); };
     this.frameReq = requestAnimationFrame(loop);
   }
 
   private updatePinPositions(): void {
     if (!this.viewer) return;
-    const anns = this.visibleAnnotations();
-    const map  = new Map<string, PinPosition>();
-    for (const a of anns) {
-      const screen = this.viewer.worldToClient({ x: a.worldX, y: a.worldY, z: a.worldZ });
-      if (screen) map.set(a.annotationId, { x: screen.x, y: screen.y });
+    const map = new Map<string, PinPosition>();
+    for (const a of this.visibleAnnotations()) {
+      const s = this.viewer.worldToClient({ x: a.worldX, y: a.worldY, z: a.worldZ });
+      if (s) map.set(a.annotationId, { x: s.x, y: s.y });
     }
-    this.zone.run(() => {
-      this.pinPositions.set(map);
-      this.cdr.markForCheck();
-    });
+    this.zone.run(() => { this.pinPositions.set(map); this.cdr.markForCheck(); });
   }
 }

@@ -63,10 +63,31 @@
   color: var(--color-accent);
 }
 
+.btn-markup {
+  padding: 4px 12px;
+  background: none;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  border-radius: 4px;
+  font-size: 12px;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.btn-markup:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
 .version-badge {
   margin-left: auto;
   font-size: 12px;
   color: var(--color-text-muted);
+}
+
+.viewer-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
 }
 
 .viewer-state {

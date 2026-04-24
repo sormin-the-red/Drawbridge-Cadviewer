@@ -1,0 +1,29 @@
+<div class="panel">
+  <div class="panel-header">Markups</div>
+  @if (markups.length === 0) {
+    <div class="empty">No markups yet.</div>
+  } @else {
+    <ul class="markup-list">
+      @for (m of markups; track m.markupId) {
+        <li
+          class="markup-item"
+          [class.dragging]="draggedId() === m.markupId"
+          draggable="true"
+          (dragstart)="onDragStart($event, m.markupId)"
+          (dragover)="onDragOver($event, m)"
+          (dragend)="onDragEnd()"
+        >
+          <img class="thumb" [src]="m.previewUrl" [alt]="m.label" />
+          <div class="info">
+            <div class="label">{{ m.label }}</div>
+            <div class="meta">{{ m.config }} · {{ formatDate(m.createdAt) }}</div>
+          </div>
+          <div class="actions">
+            <button class="btn-view" (click)="view.emit(m)" title="Restore view">↩</button>
+            <button class="btn-delete" (click)="delete.emit(m.markupId)" title="Delete">✕</button>
+          </div>
+        </li>
+      }
+    </ul>
+  }
+</div>
