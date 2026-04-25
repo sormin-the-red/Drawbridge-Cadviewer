@@ -1,0 +1,65 @@
+name: Deploy Site
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'prod'
+        type: choice
+        options:
+          - prod
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    defaults:
+      run:
+        working-directory: site
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: site/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build (production)
+        run: npm run build -- --configuration production
+        env:
+          # Set via GitHub environment secrets/variables before deploying
+          DRAWBRIDGE_API_BASE_URL: ${{ vars.DRAWBRIDGE_API_BASE_URL }}
+          DRAWBRIDGE_COGNITO_DOMAIN: ${{ vars.DRAWBRIDGE_COGNITO_DOMAIN }}
+          DRAWBRIDGE_COGNITO_CLIENT_ID: ${{ vars.DRAWBRIDGE_COGNITO_CLIENT_ID }}
+          DRAWBRIDGE_REDIRECT_URI: ${{ vars.DRAWBRIDGE_REDIRECT_URI }}
+
+      - name: Sync to S3
+        run: |
+          aws s3 sync dist/site/ s3://${{ vars.DRAWBRIDGE_SITE_BUCKET }}/ \
+            --delete \
+            --cache-control "public, max-age=31536000, immutable" \
+            --exclude "index.html"
+          aws s3 cp dist/site/index.html s3://${{ vars.DRAWBRIDGE_SITE_BUCKET }}/index.html \
+            --cache-control "no-cache, no-store, must-revalidate"
+        env:
+          AWS_DEFAULT_REGION: us-east-2
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ vars.DRAWBRIDGE_CF_DISTRIBUTION_ID }} \
+            --paths "/*"
+        env:
+          AWS_DEFAULT_REGION: us-east-2
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

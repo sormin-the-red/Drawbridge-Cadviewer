@@ -1,0 +1,33 @@
+name: .NET CI
+
+on:
+  push:
+    paths:
+      - 'src/**'
+      - '*.sln'
+  pull_request:
+    paths:
+      - 'src/**'
+      - '*.sln'
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Build PDM add-in (net48)
+        run: >
+          dotnet build src/Drawbridge.PdmAddIn/Drawbridge.PdmAddIn.csproj
+          --no-restore --configuration Release
